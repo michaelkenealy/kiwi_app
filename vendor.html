@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Terminal</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 20px; text-align: center; background: #f0f0f5; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+        input { font-size: 18px; padding: 10px; margin: 10px 0; width: 80%; border: 1px solid #ccc; border-radius: 8px; }
+        button { background: #007AFF; color: white; font-size: 18px; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }
+        #qr-container { margin-top: 20px; display: flex; justify-content: center; }
+        .status { margin-top: 20px; font-weight: bold; color: #888; }
+        .success-screen { display: none; background: #34C759; color: white; padding: 40px; border-radius: 15px; margin-top: 20px; }
+        h1 { margin: 0; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="setup-screen">
+        <h2>Create Bill</h2>
+        <input type="text" id="vendorName" value="Mike">
+        <input type="number" id="price" placeholder="Amount ($)" value="55">
+        <button onclick="generateBill()">Generate QR</button>
+    </div>
+
+    <div class="card" id="payment-screen" style="display:none;">
+        <h3>Scan to Pay</h3>
+        <div id="qr-container"></div>
+        <p class="status" id="status-text">Waiting for scan...</p>
+        <button onclick="location.reload()" style="background: #ccc; margin-top:20px; color: #333;">Cancel</button>
+    </div>
+
+    <div class="success-screen" id="success-screen">
+        <h1>PAID!</h1>
+        <h2 id="paid-amount"></h2>
+        <p id="payer-name"></p>
+        <button onclick="location.reload()" style="background: white; color: #34C759; margin-top: 20px;">New Transaction</button>
+    </div>
+
+    <script>
+        let peer = null;
+
+        function generateBill() {
+            const vendor = document.getElementById('vendorName').value;
+            const price = document.getElementById('price').value;
+
+            if(!price) return alert("Enter a price");
+
+            // 1. Create a random Peer ID
+            peer = new Peer(); 
+
+            peer.on('open', function(id) {
+                // 2. Switch UI
+                document.getElementById('setup-screen').style.display = 'none';
+                document.getElementById('payment-screen').style.display = 'block';
+
+                // 3. Create QR Code containing the Data AND the Connection ID
+                const qrData = JSON.stringify({
+                    vendor: vendor,
+                    price: price,
+                    connId: id 
+                });
+
+                document.getElementById('qr-container').innerHTML = "";
+                new QRCode(document.getElementById("qr-container"), {
+                    text: qrData,
+                    width: 200,
+                    height: 200
+                });
+
+                document.getElementById('status-text').innerText = `Ask customer to scan. ($${price})`;
+            });
+
+            // 4. Listen for connection from Sara
+            peer.on('connection', function(conn) {
+                conn.on('data', function(data) {
+                    if(data.type === 'PAYMENT_CONFIRMED') {
+                        showSuccess(price, data.payer);
+                    }
+                });
+            });
+        }
+
+        function showSuccess(amount, payer) {
+            document.getElementById('payment-screen').style.display = 'none';
+            document.getElementById('success-screen').style.display = 'block';
+            document.getElementById('paid-amount').innerText = `$${amount}`;
+            document.getElementById('payer-name').innerText = `Paid by ${payer}`;
+        }
+    </script>
+</body>
+</html>
