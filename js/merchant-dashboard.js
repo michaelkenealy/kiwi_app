@@ -26,6 +26,8 @@ async function loadMerchantTills() {
     showLoading('merchant-tills-grid');
 
     try {
+        console.log('Loading tills for vendor:', AppState.currentVendor.id);
+
         const { data: tills, error } = await supabase
             .from('tills')
             .select('*')
@@ -33,23 +35,29 @@ async function loadMerchantTills() {
             .eq('is_active', true)
             .order('created_at', { ascending: true });
 
+        console.log('Tills query result:', { tills, error });
+
         if (error) throw error;
 
         if (!tills || tills.length === 0) {
+            console.warn('No tills found for vendor:', AppState.currentVendor.id);
             container.innerHTML = `
                 <div class="card">
-                    <p class="text-center text-muted">No tills yet. Add one to get started!</p>
+                    <p class="text-center text-muted">No active tills found. Go to "Manage Tills" to add one!</p>
+                    <button class="btn btn-primary" style="margin-top: 10px;" onclick="goToTillManagement()">Manage Tills</button>
                 </div>
             `;
             return;
         }
+
+        console.log(`Found ${tills.length} tills`);
 
         let html = '';
         tills.forEach(till => {
             html += `
                 <div class="till-card" onclick="selectMerchantTill('${till.id}', '${till.till_name}')">
                     <div class="till-name">${till.till_name}</div>
-                    <div class="till-count">Select to use</div>
+                    <div class="till-count">Click to select</div>
                 </div>
             `;
         });
@@ -58,7 +66,12 @@ async function loadMerchantTills() {
 
     } catch (error) {
         console.error('Error loading tills:', error);
-        container.innerHTML = '<p class="text-center text-muted">Error loading tills</p>';
+        container.innerHTML = `
+            <div class="card">
+                <p class="text-center text-muted">Error loading tills: ${error.message}</p>
+                <p class="text-center" style="font-size: 12px; margin-top: 10px;">Check browser console for details</p>
+            </div>
+        `;
     }
 }
 
