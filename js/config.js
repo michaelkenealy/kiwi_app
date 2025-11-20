@@ -103,15 +103,26 @@ async function getCurrentUser() {
 
 async function signOut() {
     try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-
+        // Clear state first (in case signOut fails)
         AppState.clear();
+
+        // Try to sign out from Supabase
+        const { error } = await supabase.auth.signOut();
+
+        // Ignore "Auth session missing" error - user is already logged out
+        if (error && !error.message.includes('Auth session missing')) {
+            console.error('Error signing out:', error);
+            showMessage('Signed out (with warning: ' + error.message + ')', 'success');
+        } else {
+            showMessage('Signed out successfully', 'success');
+        }
+
         navigateTo('home');
-        showMessage('Signed out successfully', 'success');
     } catch (error) {
         console.error('Error signing out:', error);
-        showMessage('Error signing out: ' + error.message, 'error');
+        // Still navigate home even if signout fails
+        navigateTo('home');
+        showMessage('Logged out locally', 'success');
     }
 }
 
