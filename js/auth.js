@@ -84,9 +84,35 @@ async function handleUserLogin(event) {
             throw userError;
         }
 
-        // Check if user profile exists
+        // Check if user profile exists - if not, create it
         if (!userData) {
-            throw new Error('User profile not found. Please contact support or try registering again.');
+            console.warn('User profile not found, creating one...');
+
+            // Extract name from email if available
+            const userName = authData.user.user_metadata?.name ||
+                           authData.user.email.split('@')[0];
+
+            // Create missing profile
+            const { data: newUserData, error: createError } = await supabase
+                .from('users')
+                .insert([{
+                    auth_id: authData.user.id,
+                    name: userName,
+                    email: authData.user.email,
+                    balance: 100.00
+                }])
+                .select()
+                .single();
+
+            if (createError) {
+                console.error('Failed to create user profile:', createError);
+                throw new Error('Account exists but profile could not be created. Please contact support.');
+            }
+
+            AppState.setUser(newUserData);
+            showMessage('Welcome! Profile created successfully.', 'success');
+            navigateTo('user-dashboard');
+            return;
         }
 
         const user = userData;
@@ -197,9 +223,42 @@ async function handleMerchantLogin(event) {
             throw vendorError;
         }
 
-        // Check if vendor profile exists
+        // Check if vendor profile exists - if not, create it
         if (!vendorData) {
-            throw new Error('Merchant profile not found. Please contact support or try registering again.');
+            console.warn('Merchant profile not found, creating one...');
+
+            // Extract name from email
+            const businessName = authData.user.user_metadata?.business_name ||
+                                authData.user.email.split('@')[0] + ' Business';
+
+            // Create missing profile
+            const { data: newVendorData, error: createError } = await supabase
+                .from('vendors')
+                .insert([{
+                    auth_id: authData.user.id,
+                    name: businessName,
+                    email: authData.user.email
+                }])
+                .select()
+                .single();
+
+            if (createError) {
+                console.error('Failed to create vendor profile:', createError);
+                throw new Error('Account exists but profile could not be created. Please contact support.');
+            }
+
+            // Create default till
+            await supabase
+                .from('tills')
+                .insert([{
+                    vendor_id: newVendorData.id,
+                    till_name: 'Main Register'
+                }]);
+
+            AppState.setVendor(newVendorData);
+            showMessage('Welcome! Merchant profile created successfully.', 'success');
+            navigateTo('merchant-dashboard');
+            return;
         }
 
         const vendor = vendorData;
