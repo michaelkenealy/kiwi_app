@@ -135,6 +135,15 @@
                     Scan QR Code to Pay
                 </button>
 
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="navigateTo('user-send-money')">
+                        Send Money
+                    </button>
+                    <button class="btn btn-secondary" onclick="navigateTo('user-receive-money')">
+                        Receive Money
+                    </button>
+                </div>
+
                 <div style="margin-top: 40px;">
                     <h2>Recent Transactions</h2>
                     <div id="user-transactions-list"></div>
@@ -209,6 +218,129 @@
                     <div class="confirmation-amount" id="success-amount">$0.00</div>
                     <p class="confirmation-message">Your payment has been processed successfully</p>
                     <button class="btn btn-primary" onclick="navigateTo('user-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER SEND MONEY PAGE
+             ============================================ -->
+        <div id="user-send-money-page" class="page">
+            <div class="content-wrapper">
+                <h1>Send Money</h1>
+
+                <div class="card">
+                    <div class="balance-card" style="margin-bottom: 20px;">
+                        <div class="balance-label">Your Balance</div>
+                        <div class="balance-amount" id="send-money-balance">$0.00</div>
+                    </div>
+
+                    <div id="send-money-limits" style="text-align: center; margin-bottom: 20px; color: var(--text-secondary);">
+                        <!-- Limits will be populated by JS -->
+                    </div>
+
+                    <div class="form-group">
+                        <label for="send-recipient-email">Recipient Email</label>
+                        <input type="email" id="send-recipient-email" required placeholder="recipient@email.com">
+                        <small class="text-muted">Enter the email of the person you want to send money to</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="send-amount">Amount</label>
+                        <input type="number" id="send-amount" step="0.01" min="0.01" required placeholder="0.00">
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin: 20px 0; padding: 15px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
+                        <span>After Send:</span>
+                        <strong id="send-calculated-balance">$0.00</strong>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="handleSendMoney()">Send Money</button>
+                    <button class="btn btn-outline" onclick="cancelSendMoney()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER SEND CONFIRMATION PAGE
+             ============================================ -->
+        <div id="user-send-confirm-page" class="page">
+            <div class="content-wrapper">
+                <div class="confirmation-screen">
+                    <div class="success-icon">✓</div>
+                    <h1>Money Sent!</h1>
+                    <p class="confirmation-message">
+                        You sent <strong id="send-confirm-amount">$0.00</strong> to
+                        <span id="send-confirm-recipient">User</span>
+                    </p>
+                    <div style="margin: 20px 0; padding: 15px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
+                        <span>New Balance: </span>
+                        <strong id="send-confirm-new-balance">$0.00</strong>
+                    </div>
+                    <p class="text-muted">Redirecting in 3 seconds...</p>
+                    <button class="btn btn-primary" onclick="navigateTo('user-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER RECEIVE MONEY PAGE
+             ============================================ -->
+        <div id="user-receive-money-page" class="page">
+            <div class="content-wrapper">
+                <h1 class="text-center">Receive Money</h1>
+
+                <div class="card" style="text-align: center;">
+                    <p class="text-muted" style="margin-bottom: 20px;">Have someone scan this QR code to send you money</p>
+
+                    <div id="receive-qr-code" class="qr-display"></div>
+
+                    <div style="margin-top: 30px;">
+                        <div style="font-size: 20px; font-weight: 600; margin-bottom: 5px;" id="receive-money-name">Your Name</div>
+                        <div class="text-muted">Current Balance: <strong id="receive-money-balance">$0.00</strong></div>
+                    </div>
+                </div>
+
+                <button class="btn btn-outline" onclick="closeReceiveMoney()">Close</button>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER SETTINGS PAGE
+             ============================================ -->
+        <div id="user-settings-page" class="page">
+            <div class="content-wrapper">
+                <h1>Transfer Limits</h1>
+
+                <div class="card">
+                    <p class="text-muted" style="margin-bottom: 20px;">
+                        Configure your sending limits for peer-to-peer transfers
+                    </p>
+
+                    <div class="form-group">
+                        <label for="settings-transaction-limit">Per Transaction Limit</label>
+                        <input type="number" id="settings-transaction-limit" step="0.01" min="1" required placeholder="500.00">
+                        <small class="text-muted">Maximum amount you can send in a single transaction</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="settings-daily-limit">Daily Limit</label>
+                        <input type="number" id="settings-daily-limit" step="0.01" min="1" required placeholder="1000.00">
+                        <small class="text-muted">Maximum total amount you can send per day</small>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
+                        <p style="margin: 0; font-size: 14px;">
+                            <strong>Note:</strong> These limits help protect your account from unauthorized transactions.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="handleSaveSettings()">Save Changes</button>
+                    <button class="btn btn-outline" onclick="navigateTo('user-dashboard')">Cancel</button>
                 </div>
             </div>
         </div>
@@ -438,5 +570,6 @@
     <script src="js/auth.js"></script>
     <script src="js/user-dashboard.js"></script>
     <script src="js/merchant-dashboard.js"></script>
+    <script src="js/p2p-transfers.js"></script>
 </body>
 </html>

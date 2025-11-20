@@ -42,6 +42,25 @@ async function loadUserTransactions() {
             return;
         }
 
+        // Get recipient names for P2P transactions
+        const recipientIds = transactions
+            .filter(tx => tx.recipient_user_id)
+            .map(tx => tx.recipient_user_id);
+
+        let recipientMap = {};
+        if (recipientIds.length > 0) {
+            const { data: recipients } = await supabase
+                .from('users')
+                .select('id, name')
+                .in('id', recipientIds);
+
+            if (recipients) {
+                recipients.forEach(u => {
+                    recipientMap[u.id] = u.name;
+                });
+            }
+        }
+
         // Group transactions by day
         const grouped = groupTransactionsByDay(transactions);
 
@@ -51,17 +70,42 @@ async function loadUserTransactions() {
             html += '<ul class="transaction-list">';
 
             dayTransactions.forEach(tx => {
-                const vendorName = tx.vendors?.name || 'Unknown Vendor';
-                const tillName = tx.tills?.till_name || '';
+                const type = tx.transaction_type || 'payment';
                 const time = formatTime(tx.created_at);
+
+                let icon = '💳';
+                let description = '';
+                let amountClass = 'negative';
+                let amountPrefix = '-';
+
+                if (type === 'send') {
+                    icon = '↗';
+                    const recipientName = recipientMap[tx.recipient_user_id] || 'User';
+                    description = `Sent to ${recipientName}`;
+                    amountClass = 'negative';
+                    amountPrefix = '-';
+                } else if (type === 'receive') {
+                    icon = '↙';
+                    const senderName = recipientMap[tx.recipient_user_id] || 'User';
+                    description = `Received from ${senderName}`;
+                    amountClass = 'positive';
+                    amountPrefix = '+';
+                } else {
+                    // payment type
+                    const vendorName = tx.vendors?.name || 'Unknown Vendor';
+                    const tillName = tx.tills?.till_name || '';
+                    description = `${vendorName}${tillName ? ` (${tillName})` : ''}`;
+                    amountClass = 'negative';
+                    amountPrefix = '-';
+                }
 
                 html += `
                     <li class="transaction-item">
                         <div class="transaction-info">
-                            <div class="transaction-name">${vendorName} ${tillName ? `(${tillName})` : ''}</div>
+                            <div class="transaction-name">${icon} ${description}</div>
                             <div class="transaction-date">${time}</div>
                         </div>
-                        <div class="transaction-amount negative">-${formatCurrency(tx.amount)}</div>
+                        <div class="transaction-amount ${amountClass}">${amountPrefix}${formatCurrency(tx.amount)}</div>
                     </li>
                 `;
             });
@@ -155,13 +199,39 @@ async function stopUserScanner() {
 async function onUserScanSuccess(decodedText, decodedResult) {
     stopUserScanner();
 
-    // Parse QR code (expecting session code)
-    const sessionCode = decodedText;
+    document.getElementById('user-scan-result').textContent = 'QR Code detected! Processing...';
 
-    document.getElementById('user-scan-result').textContent = 'QR Code detected! Loading payment details...';
-
-    // Fetch payment session details
     try {
+        // Try to parse as JSON (could be user QR or payment session)
+        let qrData;
+        try {
+            qrData = JSON.parse(decodedText);
+        } catch {
+            // Not JSON, treat as session code
+            qrData = { type: 'payment', code: decodedText };
+        }
+
+        // Handle user QR code (for P2P transfers)
+        if (qrData.type === 'user') {
+            showMessage('User QR detected! Redirecting to send money...', 'success');
+
+            // Pre-fill recipient in send money page
+            AppState.scannerResult = {
+                type: 'user',
+                userId: qrData.userId,
+                userName: qrData.userName
+            };
+
+            navigateTo('user-send-money');
+            return;
+        }
+
+        // Handle payment session QR code (merchant payment)
+        const sessionCode = qrData.code || decodedText;
+
+        document.getElementById('user-scan-result').textContent = 'Loading payment details...';
+
+        // Fetch payment session details
         const { data: session, error } = await supabase
             .from('payment_sessions')
             .select(`

@@ -359,12 +359,12 @@ input::placeholder {
     font-weight: 700;
 }
 
-.transaction-amount.positive {
-    color: var(--primary-color);
-}
-
 .transaction-amount.negative {
     color: var(--danger-color);
+}
+
+.transaction-amount.positive {
+    color: var(--primary-color);
 }
 
 /* ============================================
