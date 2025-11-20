@@ -48,7 +48,7 @@
     --font-md: 16px;
     --font-lg: 18px;
     --font-xl: 24px;
-    --font-xxl: 32px;
+    --font-xxl: 38px;
 }
 
 /* ============================================
@@ -577,7 +577,7 @@ input::placeholder {
    ============================================ */
 @media (max-width: 480px) {
     :root {
-        --font-xxl: 28px;
+        --font-xxl: 34px;
         --font-xl: 22px;
         --font-lg: 16px;
     }
