@@ -76,13 +76,20 @@ async function handleUserLogin(event) {
         const { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
-            .eq('auth_id', authData.user.id)
-            .single();
+            .eq('auth_id', authData.user.id);
 
         if (userError) throw userError;
 
-        AppState.setUser(userData);
-        showMessage('Welcome back, ' + userData.name + '!', 'success');
+        // Check if user profile exists
+        if (!userData || userData.length === 0) {
+            throw new Error('User profile not found. Please contact support or try registering again.');
+        }
+
+        // If multiple records, use the first one
+        const user = userData[0];
+
+        AppState.setUser(user);
+        showMessage('Welcome back, ' + user.name + '!', 'success');
         navigateTo('user-dashboard');
 
     } catch (error) {
@@ -179,13 +186,20 @@ async function handleMerchantLogin(event) {
         const { data: vendorData, error: vendorError } = await supabase
             .from('vendors')
             .select('*')
-            .eq('auth_id', authData.user.id)
-            .single();
+            .eq('auth_id', authData.user.id);
 
         if (vendorError) throw vendorError;
 
-        AppState.setVendor(vendorData);
-        showMessage('Welcome back, ' + vendorData.name + '!', 'success');
+        // Check if vendor profile exists
+        if (!vendorData || vendorData.length === 0) {
+            throw new Error('Merchant profile not found. Please contact support or try registering again.');
+        }
+
+        // If multiple records, use the first one
+        const vendor = vendorData[0];
+
+        AppState.setVendor(vendor);
+        showMessage('Welcome back, ' + vendor.name + '!', 'success');
         navigateTo('merchant-dashboard');
 
     } catch (error) {

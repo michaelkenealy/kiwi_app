@@ -62,24 +62,36 @@ async function getCurrentUser() {
 
         if (userType === 'vendor') {
             // Fetch vendor data
-            const { data: vendor, error: vendorError } = await supabase
+            const { data: vendorData, error: vendorError } = await supabase
                 .from('vendors')
                 .select('*')
-                .eq('auth_id', session.user.id)
-                .single();
+                .eq('auth_id', session.user.id);
 
             if (vendorError) throw vendorError;
+
+            if (!vendorData || vendorData.length === 0) {
+                console.error('Vendor profile not found');
+                return null;
+            }
+
+            const vendor = vendorData[0];
             AppState.setVendor(vendor);
             return { type: 'vendor', data: vendor };
         } else {
             // Fetch user data
-            const { data: user, error: userError } = await supabase
+            const { data: userData, error: userError } = await supabase
                 .from('users')
                 .select('*')
-                .eq('auth_id', session.user.id)
-                .single();
+                .eq('auth_id', session.user.id);
 
             if (userError) throw userError;
+
+            if (!userData || userData.length === 0) {
+                console.error('User profile not found');
+                return null;
+            }
+
+            const user = userData[0];
             AppState.setUser(user);
             return { type: 'user', data: user };
         }
