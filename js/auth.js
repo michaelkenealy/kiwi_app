@@ -76,17 +76,20 @@ async function handleUserLogin(event) {
         const { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
-            .eq('auth_id', authData.user.id);
+            .eq('auth_id', authData.user.id)
+            .maybeSingle();
 
-        if (userError) throw userError;
+        if (userError) {
+            console.error('User fetch error details:', userError);
+            throw userError;
+        }
 
         // Check if user profile exists
-        if (!userData || userData.length === 0) {
+        if (!userData) {
             throw new Error('User profile not found. Please contact support or try registering again.');
         }
 
-        // If multiple records, use the first one
-        const user = userData[0];
+        const user = userData;
 
         AppState.setUser(user);
         showMessage('Welcome back, ' + user.name + '!', 'success');
@@ -186,17 +189,20 @@ async function handleMerchantLogin(event) {
         const { data: vendorData, error: vendorError } = await supabase
             .from('vendors')
             .select('*')
-            .eq('auth_id', authData.user.id);
+            .eq('auth_id', authData.user.id)
+            .maybeSingle();
 
-        if (vendorError) throw vendorError;
+        if (vendorError) {
+            console.error('Vendor fetch error details:', vendorError);
+            throw vendorError;
+        }
 
         // Check if vendor profile exists
-        if (!vendorData || vendorData.length === 0) {
+        if (!vendorData) {
             throw new Error('Merchant profile not found. Please contact support or try registering again.');
         }
 
-        // If multiple records, use the first one
-        const vendor = vendorData[0];
+        const vendor = vendorData;
 
         AppState.setVendor(vendor);
         showMessage('Welcome back, ' + vendor.name + '!', 'success');

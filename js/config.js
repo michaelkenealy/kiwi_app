@@ -65,35 +65,35 @@ async function getCurrentUser() {
             const { data: vendorData, error: vendorError } = await supabase
                 .from('vendors')
                 .select('*')
-                .eq('auth_id', session.user.id);
+                .eq('auth_id', session.user.id)
+                .maybeSingle();
 
             if (vendorError) throw vendorError;
 
-            if (!vendorData || vendorData.length === 0) {
+            if (!vendorData) {
                 console.error('Vendor profile not found');
                 return null;
             }
 
-            const vendor = vendorData[0];
-            AppState.setVendor(vendor);
-            return { type: 'vendor', data: vendor };
+            AppState.setVendor(vendorData);
+            return { type: 'vendor', data: vendorData };
         } else {
             // Fetch user data
             const { data: userData, error: userError } = await supabase
                 .from('users')
                 .select('*')
-                .eq('auth_id', session.user.id);
+                .eq('auth_id', session.user.id)
+                .maybeSingle();
 
             if (userError) throw userError;
 
-            if (!userData || userData.length === 0) {
+            if (!userData) {
                 console.error('User profile not found');
                 return null;
             }
 
-            const user = userData[0];
-            AppState.setUser(user);
-            return { type: 'user', data: user };
+            AppState.setUser(userData);
+            return { type: 'user', data: userData };
         }
     } catch (error) {
         console.error('Error getting current user:', error);
