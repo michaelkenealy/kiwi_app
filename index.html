@@ -7,25 +7,24 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; height: 100vh; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        body { font-family: -apple-system, sans-serif; background: #22272e; color: #adbac7; text-align: center; padding: 20px; height: 100vh; display: flex; flex-direction: column; align-items: center; margin: 0; }
         
         /* Name Input Styling */
         .settings-bar { width: 100%; max-width: 400px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: flex-start; }
         .settings-label { font-size: 12px; color: #888; margin-bottom: 5px; margin-left: 5px;}
-        #user-name-input { width: 95%; padding: 10px; font-size: 16px; border-radius: 8px; border: none; background: #333; color: white; outline: none; }
-        #user-name-input:focus { background: #444; border: 1px solid #007AFF; }
-
-        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; border: 2px solid #333; flex-grow: 1; background: #111; }
+        #user-name-input { width: 95%; padding: 10px; font-size: 16px; border-radius: 8px; border: none; background: #444c56; color: #adbac7; outline: none; }
+        
+        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; border: 2px solid #444c56; flex-grow: 1; background: #111; }
         #status { margin-top: 10px; color: #666; font-size: 14px; }
 
         /* Modal Styling */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10; flex-direction: column; justify-content: center; align-items: center; }
-        .card { background: white; color: black; padding: 30px; border-radius: 20px; width: 80%; max-width: 300px; text-align: center; }
+        .card { background: #2d333b; color: white; padding: 30px; border-radius: 20px; width: 80%; max-width: 300px; text-align: center; }
         h2 { margin-top: 0; }
-        .price-tag { font-size: 40px; font-weight: bold; color: #007AFF; margin: 10px 0; }
+        .price-tag { font-size: 40px; font-weight: bold; color: #58a6ff; margin: 10px 0; }
         
         .btn { padding: 15px; width: 100%; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
         .btn-confirm { background: #34C759; color: white; }
@@ -53,9 +52,12 @@
     </div>
 
     <script>
+        // === SUPABASE INITIALIZATION ===
+        const SUPABASE_URL = 'https://oljybvueyqlyvxwxsosl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sanlidnVleXFseXZ4d3hzb3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MDQzNTgsImV4cCI6MjA3OTE4MDM1OH0.Y7OsLUmfEOeA855K-UxhzqXOkrOzII0zDm_qU8GnVqM';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
         const html5QrCode = new Html5Qrcode("reader");
-        const myPeer = new Peer(); 
-        let connectionToVendor = null;
         let scannedData = null;
 
         // 1. Load saved name on startup
@@ -80,7 +82,8 @@
             (decodedText) => {
                 try {
                     const data = JSON.parse(decodedText);
-                    if(data.connId && data.price) {
+                    // QR data must contain vendorId and amount
+                    if(data.vendorId && data.amount) {
                         html5QrCode.stop();
                         showConfirmation(data);
                     }
@@ -92,28 +95,36 @@
 
         function showConfirmation(data) {
             scannedData = data;
-            document.getElementById('vendor-name').innerText = data.vendor;
-            document.getElementById('price-display').innerText = "$" + data.price;
+            // NOTE: Vendor name is not in QR, only the ID. We'll show the amount and a generic "Vendor" name.
+            document.getElementById('vendor-name').innerText = "Vendor Terminal"; 
+            document.getElementById('price-display').innerText = "$" + data.amount;
             document.getElementById('confirmation-modal').style.display = 'flex';
         }
 
-        function confirmPayment() {
+        async function confirmPayment() {
             const payerName = document.getElementById('user-name-input').value || "Unknown Guest";
-            
             document.querySelector('.btn-confirm').innerText = "Processing...";
-            
-            connectionToVendor = myPeer.connect(scannedData.connId);
-            
-            connectionToVendor.on('open', () => {
-                // Send the "Paid" signal with the custom name
-                connectionToVendor.send({
-                    type: 'PAYMENT_CONFIRMED',
-                    payer: payerName 
-                });
 
-                alert("Payment Sent!");
+            // 3. INSERT the transaction into Supabase
+            const { data, error } = await supabase
+                .from('transactions')
+                .insert([
+                    { 
+                        vendor_id: scannedData.vendorId, 
+                        amount: scannedData.amount, 
+                        payer_name: payerName
+                    },
+                ])
+                .select(); // returns the inserted data
+
+            if (error) {
+                alert('Payment failed: ' + error.message);
+                console.error(error);
+                document.querySelector('.btn-confirm').innerText = "Try Again";
+            } else {
+                alert("Payment Sent and Recorded!");
                 location.reload(); 
-            });
+            }
         }
 
         function resetScanner() {
