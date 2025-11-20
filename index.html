@@ -10,11 +10,19 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
     <style>
-        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; height: 100vh; display: flex; flex-direction: column; justify-content: center; margin: 0; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid #333; }
+        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; height: 100vh; display: flex; flex-direction: column; align-items: center; margin: 0; }
         
+        /* Name Input Styling */
+        .settings-bar { width: 100%; max-width: 400px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: flex-start; }
+        .settings-label { font-size: 12px; color: #888; margin-bottom: 5px; margin-left: 5px;}
+        #user-name-input { width: 95%; padding: 10px; font-size: 16px; border-radius: 8px; border: none; background: #333; color: white; outline: none; }
+        #user-name-input:focus { background: #444; border: 1px solid #007AFF; }
+
+        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; border: 2px solid #333; flex-grow: 1; background: #111; }
+        #status { margin-top: 10px; color: #666; font-size: 14px; }
+
+        /* Modal Styling */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10; flex-direction: column; justify-content: center; align-items: center; }
-        
         .card { background: white; color: black; padding: 30px; border-radius: 20px; width: 80%; max-width: 300px; text-align: center; }
         h2 { margin-top: 0; }
         .price-tag { font-size: 40px; font-weight: bold; color: #007AFF; margin: 10px 0; }
@@ -26,12 +34,17 @@
 </head>
 <body>
 
+    <div class="settings-bar">
+        <label class="settings-label">YOUR NAME</label>
+        <input type="text" id="user-name-input" placeholder="Enter your name here..." oninput="saveName()">
+    </div>
+
     <div id="reader"></div>
     <p id="status">Scanning for Vendor...</p>
 
     <div id="confirmation-modal" class="modal">
         <div class="card">
-            <h2 id="vendor-name">Mike</h2>
+            <h2 id="vendor-name">Vendor</h2>
             <div class="price-tag" id="price-display">$0.00</div>
             <p>Confirm Payment?</p>
             <button class="btn btn-confirm" onclick="confirmPayment()">Pay Now</button>
@@ -41,12 +54,29 @@
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
-        const myPeer = new Peer(); // Sara needs a peer ID too (even if unused)
+        const myPeer = new Peer(); 
         let connectionToVendor = null;
         let scannedData = null;
 
+        // 1. Load saved name on startup
+        window.onload = function() {
+            const savedName = localStorage.getItem('qr_payer_name');
+            if (savedName) {
+                document.getElementById('user-name-input').value = savedName;
+            } else {
+                document.getElementById('user-name-input').value = "Guest";
+            }
+        };
+
+        // 2. Save name whenever user types
+        function saveName() {
+            const name = document.getElementById('user-name-input').value;
+            localStorage.setItem('qr_payer_name', name);
+        }
+
         // Start Scanner
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        html5QrCode.start({ facingMode: "environment" }, config, 
             (decodedText) => {
                 try {
                     const data = JSON.parse(decodedText);
@@ -55,7 +85,7 @@
                         showConfirmation(data);
                     }
                 } catch(e) {
-                    console.log("Not a valid payment QR");
+                    // Ignore non-payment QR codes
                 }
             }
         );
@@ -68,20 +98,21 @@
         }
 
         function confirmPayment() {
+            const payerName = document.getElementById('user-name-input').value || "Unknown Guest";
+            
             document.querySelector('.btn-confirm').innerText = "Processing...";
             
-            // Connect to Mike's device using the ID from the QR code
             connectionToVendor = myPeer.connect(scannedData.connId);
             
             connectionToVendor.on('open', () => {
-                // Send the "Paid" signal
+                // Send the "Paid" signal with the custom name
                 connectionToVendor.send({
                     type: 'PAYMENT_CONFIRMED',
-                    payer: "Sara" // Hardcoded for now, could be dynamic
+                    payer: payerName 
                 });
 
                 alert("Payment Sent!");
-                location.reload(); // Reset for next scan
+                location.reload(); 
             });
         }
 
