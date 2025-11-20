@@ -3,26 +3,46 @@
 // ============================================
 
 async function initMerchantDashboardPage() {
+    console.log('🔷 initMerchantDashboardPage called');
+    console.log('AppState.currentVendor:', AppState.currentVendor);
+
     if (!AppState.currentVendor) {
+        console.log('⚠️ No currentVendor, fetching...');
         const result = await getCurrentUser();
+        console.log('getCurrentUser result:', result);
         if (!result || result.type !== 'vendor') {
+            console.error('❌ Not a vendor, redirecting home');
             navigateTo('home');
             return;
         }
     }
 
+    console.log('✅ Vendor loaded:', AppState.currentVendor);
+
     // Update dashboard header
     document.getElementById('vendor-name-display').textContent = AppState.currentVendor.name;
 
     // Load tills
+    console.log('📍 About to load tills...');
     await loadMerchantTills();
 
     // Load recent transactions
+    console.log('📍 About to load transactions...');
     await loadMerchantTransactions();
+
+    console.log('✅ Dashboard initialization complete');
 }
 
 async function loadMerchantTills() {
     const container = document.getElementById('merchant-tills-grid');
+
+    // Safety check
+    if (!AppState.currentVendor) {
+        console.error('❌ Cannot load tills: AppState.currentVendor is null');
+        container.innerHTML = '<p class="text-center text-muted">Error: Not logged in as merchant</p>';
+        return;
+    }
+
     showLoading('merchant-tills-grid');
 
     try {
