@@ -3,75 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QR Linker</title>
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="QR Linker">
-    <link rel="manifest" href="manifest.json">
-    
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
+    <meta http-equiv="refresh" content="0; url=app.html">
+    <title>Kiwi Pay - Redirecting...</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; }
-        .btn { padding: 15px 30px; font-size: 18px; border-radius: 12px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; width: 80%; max-width: 300px; }
-        .btn-start { background-color: #34C759; color: white; }
-        .btn-stop { background-color: #FF3B30; color: white; display: none; }
-        #result { margin-top: 20px; font-size: 16px; color: #ccc; text-align: center; padding: 0 20px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            padding: 40px;
+        }
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            color: #8E8E93;
+        }
+        a {
+            color: #34C759;
+            text-decoration: none;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
-
-    <div id="reader"></div>
-    <div id="result">Camera ready. Tap Start to scan.</div>
-    
-    <button class="btn btn-start" onclick="startScanner()">Start Camera</button>
-    <button class="btn btn-stop" onclick="stopScanner()">Stop Camera</button>
+    <div class="container">
+        <h1>🥝 Kiwi Pay</h1>
+        <p>Redirecting to app...</p>
+        <p style="margin-top: 20px;">
+            If not redirected, <a href="app.html">click here</a>
+        </p>
+    </div>
 
     <script>
-        const html5QrCode = new Html5Qrcode("reader");
-        let isScanning = false;
-
-        const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        function startScanner() {
-            // Request rear camera (environment)
-            html5QrCode.start({ facingMode: "environment" }, qrConfig, onScanSuccess, onScanFailure)
-            .then(() => {
-                isScanning = true;
-                document.querySelector('.btn-start').style.display = 'none';
-                document.querySelector('.btn-stop').style.display = 'block';
-                document.getElementById('result').innerText = "Scanning...";
-            });
-        }
-
-        function stopScanner() {
-            if (isScanning) {
-                html5QrCode.stop().then(() => {
-                    isScanning = false;
-                    document.querySelector('.btn-start').style.display = 'block';
-                    document.querySelector('.btn-stop').style.display = 'none';
-                    document.getElementById('result').innerText = "Stopped.";
-                });
-            }
-        }
-
-        function onScanSuccess(decodedText, decodedResult) {
-            // SUCCESS: Link the entity here
-            stopScanner(); // Stop camera immediately after scan
-            
-            // Example: Redirect to your entity page
-            // window.location.href = `https://your-database.com/item/${decodedText}`;
-            
-            document.getElementById('result').innerText = `Found: ${decodedText}`;
-            alert("Scanned: " + decodedText); 
-        }
-
-        function onScanFailure(error) {
-            // Only logs to console to avoid spamming the UI
-            // console.warn(`Code scan error = ${error}`);
-        }
+        // Backup redirect in case meta refresh doesn't work
+        setTimeout(() => {
+            window.location.href = 'app.html';
+        }, 100);
     </script>
 </body>
 </html>
