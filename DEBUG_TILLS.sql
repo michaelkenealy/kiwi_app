@@ -31,7 +31,6 @@ ORDER BY t.created_at DESC;
 SELECT
     id as vendor_id,
     name as business_name,
-    email,
     auth_id,
     created_at
 FROM vendors

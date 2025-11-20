@@ -236,8 +236,7 @@ async function handleMerchantLogin(event) {
                 .from('vendors')
                 .insert([{
                     auth_id: authData.user.id,
-                    name: businessName,
-                    email: authData.user.email
+                    name: businessName
                 }])
                 .select()
                 .single();
