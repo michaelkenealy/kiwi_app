@@ -39,12 +39,30 @@ const Router = {
             }
 
             // Call page initialization if it exists
-            if (window[`init${this.capitalize(pageName)}Page`]) {
-                window[`init${this.capitalize(pageName)}Page`]();
+            const initFunctionName = this.getInitFunctionName(pageName);
+            console.log(`🔍 Looking for init function: ${initFunctionName}`);
+            if (window[initFunctionName]) {
+                console.log(`✅ Calling ${initFunctionName}()`);
+                window[initFunctionName]();
+            } else {
+                console.log(`⚠️ No init function found for page: ${pageName}`);
             }
         } else {
             console.error(`Page not found: ${pageName}`);
         }
+    },
+
+    getInitFunctionName(pageName) {
+        // Convert kebab-case to camelCase for function names
+        // e.g., "merchant-dashboard" -> "initMerchantDashboardPage"
+        // e.g., "user-login" -> "initUserLoginPage"
+        const camelCase = pageName
+            .split('-')
+            .map((word, index) => {
+                return word.charAt(0).toUpperCase() + word.slice(1);
+            })
+            .join('');
+        return `init${camelCase}Page`;
     },
 
     capitalize(str) {
