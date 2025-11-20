@@ -3,74 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QR Linker</title>
-    
+    <title>QR Payer</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="QR Linker">
-    <link rel="manifest" href="manifest.json">
     
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; }
-        .btn { padding: 15px 30px; font-size: 18px; border-radius: 12px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; width: 80%; max-width: 300px; }
-        .btn-start { background-color: #34C759; color: white; }
-        .btn-stop { background-color: #FF3B30; color: white; display: none; }
-        #result { margin-top: 20px; font-size: 16px; color: #ccc; text-align: center; padding: 0 20px; }
+        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; text-align: center; padding: 20px; height: 100vh; display: flex; flex-direction: column; justify-content: center; margin: 0; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; border: 2px solid #333; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10; flex-direction: column; justify-content: center; align-items: center; }
+        
+        .card { background: white; color: black; padding: 30px; border-radius: 20px; width: 80%; max-width: 300px; text-align: center; }
+        h2 { margin-top: 0; }
+        .price-tag { font-size: 40px; font-weight: bold; color: #007AFF; margin: 10px 0; }
+        
+        .btn { padding: 15px; width: 100%; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .btn-confirm { background: #34C759; color: white; }
+        .btn-cancel { background: #FF3B30; color: white; }
     </style>
 </head>
 <body>
 
     <div id="reader"></div>
-    <div id="result">Camera ready. Tap Start to scan.</div>
-    
-    <button class="btn btn-start" onclick="startScanner()">Start Camera</button>
-    <button class="btn btn-stop" onclick="stopScanner()">Stop Camera</button>
+    <p id="status">Scanning for Vendor...</p>
+
+    <div id="confirmation-modal" class="modal">
+        <div class="card">
+            <h2 id="vendor-name">Mike</h2>
+            <div class="price-tag" id="price-display">$0.00</div>
+            <p>Confirm Payment?</p>
+            <button class="btn btn-confirm" onclick="confirmPayment()">Pay Now</button>
+            <button class="btn btn-cancel" onclick="resetScanner()">Cancel</button>
+        </div>
+    </div>
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
-        let isScanning = false;
+        const myPeer = new Peer(); // Sara needs a peer ID too (even if unused)
+        let connectionToVendor = null;
+        let scannedData = null;
 
-        const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        function startScanner() {
-            // Request rear camera (environment)
-            html5QrCode.start({ facingMode: "environment" }, qrConfig, onScanSuccess, onScanFailure)
-            .then(() => {
-                isScanning = true;
-                document.querySelector('.btn-start').style.display = 'none';
-                document.querySelector('.btn-stop').style.display = 'block';
-                document.getElementById('result').innerText = "Scanning...";
+        // Start Scanner
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            (decodedText) => {
+                try {
+                    const data = JSON.parse(decodedText);
+                    if(data.connId && data.price) {
+                        html5QrCode.stop();
+                        showConfirmation(data);
+                    }
+                } catch(e) {
+                    console.log("Not a valid payment QR");
+                }
+            }
+        );
+
+        function showConfirmation(data) {
+            scannedData = data;
+            document.getElementById('vendor-name').innerText = data.vendor;
+            document.getElementById('price-display').innerText = "$" + data.price;
+            document.getElementById('confirmation-modal').style.display = 'flex';
+        }
+
+        function confirmPayment() {
+            document.querySelector('.btn-confirm').innerText = "Processing...";
+            
+            // Connect to Mike's device using the ID from the QR code
+            connectionToVendor = myPeer.connect(scannedData.connId);
+            
+            connectionToVendor.on('open', () => {
+                // Send the "Paid" signal
+                connectionToVendor.send({
+                    type: 'PAYMENT_CONFIRMED',
+                    payer: "Sara" // Hardcoded for now, could be dynamic
+                });
+
+                alert("Payment Sent!");
+                location.reload(); // Reset for next scan
             });
         }
 
-        function stopScanner() {
-            if (isScanning) {
-                html5QrCode.stop().then(() => {
-                    isScanning = false;
-                    document.querySelector('.btn-start').style.display = 'block';
-                    document.querySelector('.btn-stop').style.display = 'none';
-                    document.getElementById('result').innerText = "Stopped.";
-                });
-            }
-        }
-
-        function onScanSuccess(decodedText, decodedResult) {
-            // SUCCESS: Link the entity here
-            stopScanner(); // Stop camera immediately after scan
-            
-            // Example: Redirect to your entity page
-            // window.location.href = `https://your-database.com/item/${decodedText}`;
-            
-            document.getElementById('result').innerText = `Found: ${decodedText}`;
-            alert("Scanned: " + decodedText); 
-        }
-
-        function onScanFailure(error) {
-            // Only logs to console to avoid spamming the UI
-            // console.warn(`Code scan error = ${error}`);
+        function resetScanner() {
+            location.reload();
         }
     </script>
 </body>
