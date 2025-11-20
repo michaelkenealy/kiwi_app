@@ -17,16 +17,17 @@
         .settings-label { font-size: 12px; color: #888; margin-bottom: 5px; margin-left: 5px;}
         #user-name-input { width: 95%; padding: 10px; font-size: 16px; border-radius: 8px; border: none; background: #444c56; color: #adbac7; outline: none; }
         
-        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; border: 2px solid #444c56; flex-grow: 1; background: #111; }
+        /* Camera & Button Styling */
+        #reader { width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; border: 2px solid #444c56; flex-grow: 1; background: #111; margin: 10px 0; }
         #status { margin-top: 10px; color: #666; font-size: 14px; }
+        
+        .btn { padding: 15px; width: 95%; max-width: 400px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .btn-start { background: #3783fd; color: white; margin-bottom: 20px; }
 
-        /* Modal Styling */
+        /* Modal Styling (unchanged) */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10; flex-direction: column; justify-content: center; align-items: center; }
         .card { background: #2d333b; color: white; padding: 30px; border-radius: 20px; width: 80%; max-width: 300px; text-align: center; }
-        h2 { margin-top: 0; }
         .price-tag { font-size: 40px; font-weight: bold; color: #58a6ff; margin: 10px 0; }
-        
-        .btn { padding: 15px; width: 100%; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
         .btn-confirm { background: #34C759; color: white; }
         .btn-cancel { background: #FF3B30; color: white; }
     </style>
@@ -38,8 +39,10 @@
         <input type="text" id="user-name-input" placeholder="Enter your name here..." oninput="saveName()">
     </div>
 
-    <div id="reader"></div>
-    <p id="status">Scanning for Vendor...</p>
+    <button class="btn btn-start" id="start-btn" onclick="startScanner()">Activate Camera Scanner</button>
+
+    <div id="reader" style="display:none;"></div>
+    <p id="status">Tap the button above to start scanning.</p>
 
     <div id="confirmation-modal" class="modal">
         <div class="card">
@@ -52,15 +55,15 @@
     </div>
 
     <script>
-        // === SUPABASE INITIALIZATION ===
-        const SUPABASE_URL = 'https://oljybvueyqlyvxwxsosl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sanlidnVleXFseXZ4d3hzb3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MDQzNTgsImV4cCI6MjA3OTE4MDM1OH0.Y7OsLUmfEOeA855K-UxhzqXOkrOzII0zDm_qU8GnVqM';
+        // === SUPABASE INITIALIZATION (unchanged) ===
+        const SUPABASE_URL = 'https://oljybvueyqlyvxwxsosl.supabase.co'; // REMINDER: REPLACE
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sanlidnVleXFseXZ4d3hzb3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MDQzNTgsImV4cCI6MjA3OTE4MDM1OH0.Y7OsLUmfEOeA855K-UxhzqXOkrOzII0zDm_qU8GnVqM'; // REMINDER: REPLACE
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const html5QrCode = new Html5Qrcode("reader");
         let scannedData = null;
 
-        // 1. Load saved name on startup
+        // Load saved name on startup (unchanged)
         window.onload = function() {
             const savedName = localStorage.getItem('qr_payer_name');
             if (savedName) {
@@ -70,32 +73,49 @@
             }
         };
 
-        // 2. Save name whenever user types
+        // Save name whenever user types (unchanged)
         function saveName() {
             const name = document.getElementById('user-name-input').value;
             localStorage.setItem('qr_payer_name', name);
         }
 
-        // Start Scanner
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        html5QrCode.start({ facingMode: "environment" }, config, 
-            (decodedText) => {
-                try {
-                    const data = JSON.parse(decodedText);
-                    // QR data must contain vendorId and amount
-                    if(data.vendorId && data.amount) {
-                        html5QrCode.stop();
-                        showConfirmation(data);
-                    }
-                } catch(e) {
-                    // Ignore non-payment QR codes
-                }
-            }
-        );
+        // NEW FUNCTION: Starts the Scanner on button click
+        function startScanner() {
+            // 1. Hide the button and show the reader
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('reader').style.display = 'block';
+            document.getElementById('status').innerText = 'Starting Camera...';
 
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            // 2. Start the camera
+            html5QrCode.start({ facingMode: "environment" }, config, 
+                (decodedText) => {
+                    // Success callback (runs on successful scan)
+                    try {
+                        const data = JSON.parse(decodedText);
+                        if(data.vendorId && data.amount) {
+                            html5QrCode.stop().then(() => {
+                                showConfirmation(data);
+                            });
+                        }
+                    } catch(e) {
+                        // Ignore non-payment QR codes
+                    }
+                },
+                (errorMessage) => {
+                    // Error callback (optional for logging)
+                }
+            ).catch(err => {
+                // Catches permission denied or camera access failure
+                document.getElementById('status').innerText = 'Camera access failed. Ensure permission is granted.';
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('start-btn').style.display = 'block';
+            });
+        }
+        
         function showConfirmation(data) {
             scannedData = data;
-            // NOTE: Vendor name is not in QR, only the ID. We'll show the amount and a generic "Vendor" name.
             document.getElementById('vendor-name').innerText = "Vendor Terminal"; 
             document.getElementById('price-display').innerText = "$" + data.amount;
             document.getElementById('confirmation-modal').style.display = 'flex';
@@ -105,7 +125,6 @@
             const payerName = document.getElementById('user-name-input').value || "Unknown Guest";
             document.querySelector('.btn-confirm').innerText = "Processing...";
 
-            // 3. INSERT the transaction into Supabase
             const { data, error } = await supabase
                 .from('transactions')
                 .insert([
@@ -115,7 +134,7 @@
                         payer_name: payerName
                     },
                 ])
-                .select(); // returns the inserted data
+                .select(); 
 
             if (error) {
                 alert('Payment failed: ' + error.message);
@@ -130,6 +149,8 @@
         function resetScanner() {
             location.reload();
         }
+
+        // NOTE: The previous automatic start on load is removed, replaced by startScanner()
     </script>
 </body>
 </html>
