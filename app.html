@@ -420,7 +420,11 @@
                         <span id="merchant-confirm-payer">Customer</span> paid
                         <strong id="merchant-confirm-amount">$0.00</strong>
                     </p>
-                    <button class="btn btn-primary" onclick="navigateTo('merchant-dashboard')">Back to Dashboard</button>
+                    <p class="text-muted" style="font-size: 14px; margin-top: 10px;">Redirecting in 3 seconds...</p>
+                    <div class="btn-group" style="max-width: 500px; margin: 0 auto;">
+                        <button class="btn btn-primary" onclick="continueNewTransaction()">New Transaction</button>
+                        <button class="btn btn-outline" onclick="navigateTo('merchant-dashboard')">Dashboard</button>
+                    </div>
                 </div>
             </div>
         </div>

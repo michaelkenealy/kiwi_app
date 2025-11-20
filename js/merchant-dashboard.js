@@ -67,6 +67,9 @@ function selectMerchantTill(tillId, tillName) {
     navigateTo('merchant-payment');
 }
 
+// Make function globally accessible
+window.selectMerchantTill = selectMerchantTill;
+
 async function loadMerchantTransactions() {
     const container = document.getElementById('merchant-transactions-list');
     showLoading('merchant-transactions-list');
@@ -309,12 +312,16 @@ async function toggleTill(tillId, newStatus) {
     }
 }
 
+// Make functions globally accessible
+window.toggleTill = toggleTill;
+
 // ============================================
 // Payment Entry & QR Generation
 // ============================================
 
 let currentPaymentSessionId = null;
 let paymentSubscription = null;
+let autoRedirectTimeout = null;
 
 async function initMerchantPaymentPage() {
     if (!AppState.currentVendor || !AppState.selectedTill) {
@@ -452,12 +459,26 @@ async function onPaymentCompleted(amount) {
 
     navigateTo('merchant-confirm');
 
-    // Auto-redirect after 3 seconds
-    setTimeout(() => {
-        resetMerchantPayment();
-        navigateTo('merchant-dashboard');
+    // Auto-redirect after 3 seconds to create new transaction
+    autoRedirectTimeout = setTimeout(() => {
+        continueNewTransaction();
     }, 3000);
 }
+
+// Function to continue to new transaction
+function continueNewTransaction() {
+    // Clear auto-redirect timer if it exists
+    if (autoRedirectTimeout) {
+        clearTimeout(autoRedirectTimeout);
+        autoRedirectTimeout = null;
+    }
+
+    resetMerchantPayment();
+    navigateTo('merchant-payment'); // Go back to payment entry with same till
+}
+
+// Make function globally accessible
+window.continueNewTransaction = continueNewTransaction;
 
 function cancelMerchantQR() {
     if (paymentSubscription) {
