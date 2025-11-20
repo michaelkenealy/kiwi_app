@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 20px; text-align: center; background: #22272e; color: #adbac7; }
+        .card { background: #2d333b; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 400px; margin: 0 auto; }
+        input { font-size: 18px; padding: 10px; margin: 10px 0; width: 80%; border: 1px solid #444c56; border-radius: 8px; background: #22272e; color: #adbac7; }
+        button { background: #3783fd; color: white; font-size: 18px; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }
+        #qr-container { margin-top: 20px; display: flex; justify-content: center; padding: 10px; background: white; border-radius: 8px; }
+        .status { margin-top: 20px; font-weight: bold; color: #58a6ff; }
+        .success-screen { display: none; background: #34C759; color: white; padding: 40px; border-radius: 15px; margin-top: 20px; }
+        h1 { margin: 0; }
+        .vendor-logo { width: 150px; height: auto; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="setup-screen">
+        <img src="logo.png" alt="Logo" class="vendor-logo" onerror="this.style.display='none'">
+        <h2>Create Bill</h2>
+        <input type="text" id="vendorName" value="Mike's Lemonade">
+        <input type="number" id="price" placeholder="Amount ($)" value="5.00">
+        <button onclick="generateBill()">Generate QR</button>
+    </div>
+
+    <div class="card" id="payment-screen" style="display:none;">
+        <h3>Scan to Pay</h3>
+        <div id="qr-container"></div>
+        <p class="status" id="status-text">Waiting for payment...</p>
+        <button onclick="location.reload()" style="background: #444c56; margin-top:20px; color: #adbac7;">Cancel</button>
+    </div>
+
+    <div class="success-screen" id="success-screen">
+        <h1>PAID!</h1>
+        <h2 id="paid-amount"></h2>
+        <p id="payer-name"></p>
+        <button onclick="location.reload()" style="background: white; color: #34C759; margin-top: 20px;">New Transaction</button>
+    </div>
+
+    <script>
+        // === SUPABASE INITIALIZATION ===
+        const SUPABASE_URL = 'https://oljybvueyqlyvxwxsosl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sanlidnVleXFseXZ4d3hzb3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MDQzNTgsImV4cCI6MjA3OTE4MDM1OH0.Y7OsLUmfEOeA855K-UxhzqXOkrOzII0zDm_qU8GnVqM';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // NOTE: This vendor ID needs to be linked to the "Mike's Lemonade" vendor row in your Supabase 'vendors' table.
+        // For testing, just replace this with the UUID of the 'Mike' vendor row you created.
+        const VENDOR_UUID = 'REPLACE_WITH_MIKES_UUID'; 
+
+        let currentTransactionAmount = 0;
+
+        function generateBill() {
+            const vendor = document.getElementById('vendorName').value;
+            const price = document.getElementById('price').value;
+
+            if(!price || isNaN(price)) return alert("Enter a valid price");
+            currentTransactionAmount = parseFloat(price).toFixed(2);
+
+            // 1. Switch UI
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('payment-screen').style.display = 'block';
+
+            // 2. Create QR Code containing essential data
+            // We use the vendor ID and the current amount for the customer to record
+            const qrData = JSON.stringify({
+                vendorId: VENDOR_UUID,
+                amount: currentTransactionAmount 
+            });
+
+            document.getElementById('qr-container').innerHTML = "";
+            new QRCode(document.getElementById("qr-container"), {
+                text: qrData,
+                width: 200,
+                height: 200
+            });
+
+            document.getElementById('status-text').innerText = `Ask customer to scan. ($${currentTransactionAmount})`;
+
+            // 3. Start listening for a transaction
+            listenForPayment();
+        }
+
+        function listenForPayment() {
+            // Subscribe to the 'transactions' table for INSERTS
+            supabase
+                .channel('transactions-channel')
+                .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'transactions' 
+                }, (payload) => {
+                    const transaction = payload.new;
+                    // Check if the new transaction matches this vendor and amount
+                    if (transaction.vendor_id === VENDOR_UUID && 
+                        parseFloat(transaction.amount).toFixed(2) === currentTransactionAmount) {
+                        
+                        showSuccess(transaction.amount, transaction.payer_name);
+                    }
+                })
+                .subscribe();
+            
+            document.getElementById('status-text').innerText = `Scanning... Listening for transaction on $${currentTransactionAmount}`;
+        }
+
+        function showSuccess(amount, payer) {
+            document.getElementById('payment-screen').style.display = 'none';
+            document.getElementById('success-screen').style.display = 'block';
+            document.getElementById('paid-amount').innerText = `$${amount}`;
+            document.getElementById('payer-name').innerText = `Paid by ${payer}`;
+            // Optional: Unsubscribe from channel after successful payment
+            supabase.removeAllChannels(); 
+        }
+    </script>
+</body>
+</html>
