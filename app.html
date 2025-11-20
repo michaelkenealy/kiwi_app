@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kiwi Pay - QR Payment App</title>
+
+    <!-- iOS Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kiwi Pay">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- ============================================
+             HOME PAGE
+             ============================================ -->
+        <div id="home-page" class="page active">
+            <div class="content-wrapper">
+                <div style="text-align: center; margin: 60px 0 40px 0;">
+                    <h1 style="font-size: 48px; margin-bottom: 16px;">🥝 Kiwi Pay</h1>
+                    <p style="font-size: 18px; color: var(--text-secondary);">Fast & Secure QR Payments</p>
+                </div>
+
+                <div class="card">
+                    <h2>I am a...</h2>
+                    <div class="btn-group" style="flex-direction: column;">
+                        <button class="btn btn-primary" onclick="navigateTo('user-login')">
+                            User / Customer
+                        </button>
+                        <button class="btn btn-secondary" onclick="navigateTo('merchant-login')">
+                            Merchant / Vendor
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER LOGIN PAGE
+             ============================================ -->
+        <div id="user-login-page" class="page">
+            <div class="content-wrapper">
+                <h1>User Login</h1>
+
+                <form onsubmit="handleUserLogin(event)">
+                    <div class="form-group">
+                        <label for="user-login-email">Email</label>
+                        <input type="email" id="user-login-email" required placeholder="your@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-login-password">Password</label>
+                        <input type="password" id="user-login-password" required placeholder="Your password">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <p class="text-muted">Don't have an account?</p>
+                    <button class="btn btn-outline" onclick="navigateTo('user-register')">Create Account</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a class="nav-link" onclick="navigateTo('home')">Back to Home</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER REGISTRATION PAGE
+             ============================================ -->
+        <div id="user-register-page" class="page">
+            <div class="content-wrapper">
+                <h1>Create User Account</h1>
+
+                <form onsubmit="handleUserRegister(event)">
+                    <div class="form-group">
+                        <label for="user-register-name">Full Name</label>
+                        <input type="text" id="user-register-name" required placeholder="John Doe">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-register-email">Email</label>
+                        <input type="email" id="user-register-email" required placeholder="your@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-register-password">Password</label>
+                        <input type="password" id="user-register-password" required placeholder="Choose a password" minlength="6">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Account</button>
+                </form>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <p class="text-muted">Already have an account?</p>
+                    <button class="btn btn-outline" onclick="navigateTo('user-login')">Login</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a class="nav-link" onclick="navigateTo('home')">Back to Home</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER DASHBOARD PAGE
+             ============================================ -->
+        <div id="user-dashboard-page" class="page">
+            <div class="content-wrapper">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 style="margin: 0;">Hello, <span id="user-name-display">User</span></h1>
+                    <button class="btn btn-danger" style="width: auto; padding: 10px 20px;" onclick="signOut()">Logout</button>
+                </div>
+
+                <div class="balance-card">
+                    <div class="balance-label">Your Balance</div>
+                    <div class="balance-amount" id="user-balance">$0.00</div>
+                </div>
+
+                <button class="btn btn-primary" onclick="startUserPayment()">
+                    Scan QR Code to Pay
+                </button>
+
+                <div style="margin-top: 40px;">
+                    <h2>Recent Transactions</h2>
+                    <div id="user-transactions-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER SCAN PAGE
+             ============================================ -->
+        <div id="user-scan-page" class="page">
+            <div class="content-wrapper">
+                <h1 class="text-center">Scan QR Code</h1>
+
+                <div id="user-qr-reader" class="qr-scanner"></div>
+                <div id="user-scan-result" class="text-center" style="margin: 20px 0;">
+                    Ready to scan
+                </div>
+
+                <div class="btn-group">
+                    <button id="user-scan-btn" class="btn btn-primary" onclick="startUserScanner()">Start Camera</button>
+                    <button id="user-stop-btn" class="btn btn-danger" style="display: none;" onclick="stopUserScanner()">Stop Camera</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-outline" onclick="navigateTo('user-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER PAYMENT CONFIRMATION PAGE
+             ============================================ -->
+        <div id="user-confirm-page" class="page">
+            <div class="content-wrapper">
+                <h1 class="text-center">Confirm Payment</h1>
+
+                <div class="card">
+                    <h2 id="payment-vendor-name">Vendor Name</h2>
+                    <p class="text-muted" id="payment-till-name">Till Name</p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <div style="font-size: 48px; font-weight: 700; color: var(--primary-color);" id="payment-amount-display">$0.00</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin: 20px 0; padding: 15px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
+                        <span>Current Balance:</span>
+                        <strong id="user-current-balance">$0.00</strong>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin: 20px 0; padding: 15px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
+                        <span>New Balance:</span>
+                        <strong id="user-new-balance">$0.00</strong>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button id="confirm-payment-btn" class="btn btn-primary" onclick="confirmUserPayment()">Pay Now</button>
+                    <button class="btn btn-outline" onclick="cancelUserPayment()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             USER SUCCESS PAGE
+             ============================================ -->
+        <div id="user-success-page" class="page">
+            <div class="content-wrapper">
+                <div class="confirmation-screen">
+                    <div class="success-icon">✓</div>
+                    <h1>Payment Successful!</h1>
+                    <div class="confirmation-amount" id="success-amount">$0.00</div>
+                    <p class="confirmation-message">Your payment has been processed successfully</p>
+                    <button class="btn btn-primary" onclick="navigateTo('user-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT LOGIN PAGE
+             ============================================ -->
+        <div id="merchant-login-page" class="page">
+            <div class="content-wrapper">
+                <h1>Merchant Login</h1>
+
+                <form onsubmit="handleMerchantLogin(event)">
+                    <div class="form-group">
+                        <label for="merchant-login-email">Email</label>
+                        <input type="email" id="merchant-login-email" required placeholder="business@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merchant-login-password">Password</label>
+                        <input type="password" id="merchant-login-password" required placeholder="Your password">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <p class="text-muted">Don't have a merchant account?</p>
+                    <button class="btn btn-outline" onclick="navigateTo('merchant-register')">Register Business</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a class="nav-link" onclick="navigateTo('home')">Back to Home</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT REGISTRATION PAGE
+             ============================================ -->
+        <div id="merchant-register-page" class="page">
+            <div class="content-wrapper">
+                <h1>Register Merchant Account</h1>
+
+                <form onsubmit="handleMerchantRegister(event)">
+                    <div class="form-group">
+                        <label for="merchant-register-name">Your Name</label>
+                        <input type="text" id="merchant-register-name" required placeholder="John Doe">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merchant-register-business">Business Name</label>
+                        <input type="text" id="merchant-register-business" required placeholder="My Coffee Shop">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merchant-register-email">Email</label>
+                        <input type="email" id="merchant-register-email" required placeholder="business@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merchant-register-password">Password</label>
+                        <input type="password" id="merchant-register-password" required placeholder="Choose a password" minlength="6">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Merchant Account</button>
+                </form>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <p class="text-muted">Already have an account?</p>
+                    <button class="btn btn-outline" onclick="navigateTo('merchant-login')">Login</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a class="nav-link" onclick="navigateTo('home')">Back to Home</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT DASHBOARD PAGE
+             ============================================ -->
+        <div id="merchant-dashboard-page" class="page">
+            <div class="content-wrapper">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 style="margin: 0;" id="vendor-name-display">Merchant</h1>
+                    <button class="btn btn-danger" style="width: auto; padding: 10px 20px;" onclick="signOut()">Logout</button>
+                </div>
+
+                <div class="nav-links">
+                    <a class="nav-link" onclick="goToMerchantProfile()">Profile</a>
+                    <a class="nav-link" onclick="goToTillManagement()">Manage Tills</a>
+                </div>
+
+                <div style="margin: 30px 0;">
+                    <h2>Select a Till</h2>
+                    <div id="merchant-tills-grid" class="till-grid"></div>
+                </div>
+
+                <div style="margin-top: 40px;">
+                    <h2>Recent Transactions</h2>
+                    <div id="merchant-transactions-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT PROFILE PAGE
+             ============================================ -->
+        <div id="merchant-profile-page" class="page">
+            <div class="content-wrapper">
+                <h1>Business Profile</h1>
+
+                <form onsubmit="saveMerchantProfile(event)">
+                    <div class="logo-upload">
+                        <div class="logo-preview" id="profile-logo-preview">
+                            <div class="logo-placeholder">🏪</div>
+                        </div>
+                        <p class="text-muted text-center" style="font-size: 14px;">Logo upload coming soon</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-business-name">Business Name</label>
+                        <input type="text" id="profile-business-name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-description">Description</label>
+                        <textarea id="profile-description" rows="4" placeholder="Tell customers about your business"></textarea>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-outline" onclick="navigateTo('merchant-dashboard')">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT TILL MANAGEMENT PAGE
+             ============================================ -->
+        <div id="merchant-tills-page" class="page">
+            <div class="content-wrapper">
+                <h1>Manage Tills</h1>
+
+                <div class="card">
+                    <h3>Your Tills</h3>
+                    <div id="tills-management-list"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Add New Till</h3>
+                    <form onsubmit="addNewTill(event)">
+                        <div class="form-group">
+                            <label for="new-till-name">Till Name</label>
+                            <input type="text" id="new-till-name" required placeholder="e.g., Front Counter, Drive-Thru">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Till</button>
+                    </form>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-outline" onclick="navigateTo('merchant-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT PAYMENT PAGE (QR Generation)
+             ============================================ -->
+        <div id="merchant-payment-page" class="page">
+            <div class="content-wrapper">
+                <h1 class="text-center">Generate Payment QR</h1>
+                <p class="text-center text-muted">Till: <span id="selected-till-name"></span></p>
+
+                <div id="merchant-payment-form">
+                    <form onsubmit="generateMerchantQR(event)">
+                        <div class="form-group">
+                            <label for="payment-amount-input">Payment Amount</label>
+                            <input type="number" id="payment-amount-input" step="0.01" min="0.01" required placeholder="0.00" style="font-size: 24px; text-align: center;">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Generate QR Code</button>
+                    </form>
+                </div>
+
+                <div id="merchant-qr-section" style="display: none;">
+                    <div class="qr-container">
+                        <div id="merchant-qr-display"></div>
+                    </div>
+                    <h2 class="text-center">Amount: <span id="merchant-qr-amount">$0.00</span></h2>
+                    <p class="text-center text-muted">Customer will scan this QR code to pay</p>
+                    <button class="btn btn-danger" onclick="cancelMerchantQR()">Cancel Payment</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-outline" onclick="navigateTo('merchant-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             MERCHANT CONFIRMATION PAGE
+             ============================================ -->
+        <div id="merchant-confirm-page" class="page">
+            <div class="content-wrapper">
+                <div class="confirmation-screen">
+                    <div class="success-icon">✓</div>
+                    <h1>Payment Received!</h1>
+                    <p class="confirmation-message" style="font-size: 20px;">
+                        <span id="merchant-confirm-payer">Customer</span> paid
+                        <strong id="merchant-confirm-amount">$0.00</strong>
+                    </p>
+                    <button class="btn btn-primary" onclick="navigateTo('merchant-dashboard')">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="js/config.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/user-dashboard.js"></script>
+    <script src="js/merchant-dashboard.js"></script>
+</body>
+</html>
